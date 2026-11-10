@@ -49,7 +49,8 @@ tools:
     parameters:
       type: object
       properties:
-        query: {type: string, default: "", description: "Truy vấn"}
+        query: {type: string, default: "", description: " Chỉ từ khóa chủ đề/thực thể cốt lõi, ngắn gọn.
+            KHÔNG chép nguyên câu hỏi. KHÔNG thêm từ chỉ thời gian vì đã có timeframe và topic." }
         topic: {type: string, enum: [general, news], default: "general", description: "Phân loại"}
         timeframe: {type: string, enum: [day, week, month, year], default: "week", description: "Khoảng thời gian"}
         max_results: {type: integer, default: 5, description: "Số kết quả"}
@@ -86,7 +87,10 @@ tools:
 
   # ---------------- Bonus tools ----------------
   - name: send
-    description: "Gửi một đoạn văn bản đi."
+    description: >-
+      Đăng một BẢN TIN research (đã tổng hợp từ tool khác) lên kênh Telegram. Là hành động ghi ra ngoài.
+      KHÔNG dùng send để trả lời người dùng: câu trả lời thông thường, lời từ chối, lời giải toán,
+      code... phải viết thẳng bằng text, không gọi send.
     parameters:
       type: object
       properties:
@@ -95,7 +99,9 @@ tools:
       required: [text]
 
   - name: policy
-    description: "Tìm trong tài liệu nội bộ."
+    description: >-
+      Tìm trong tài liệu QUY ĐỊNH NỘI BỘ của công ty (nghiên cứu AI, trích nguồn, dữ liệu, xuất bản, dùng tool).
+      Chỉ dùng khi người dùng hỏi về quy định/chính sách. KHÔNG dùng cho câu hỏi "bạn là gì / làm được gì".
     parameters:
       type: object
       properties:
