@@ -140,3 +140,20 @@ tools:
         max_pages: {type: integer, default: 5, description: "Số trang"}
         max_chars: {type: integer, default: 8000, description: "Số ký tự"}
       required: [arxiv_url]
+
+  # ---------------- Tool mới nhóm thêm ----------------
+  - name: web_answer
+    description: >-
+      Tool DỰ PHÒNG: tìm trên web và tự tổng hợp một câu trả lời (kèm nguồn) cho câu hỏi thông tin
+      trong phạm vi research khi KHÔNG có tool chuyên biệt nào khớp. Ví dụ: "RAG là gì?",
+      "GPU H200 khác H100 thế nào?", "Ai sáng lập Mistral AI?".
+      KHÔNG dùng khi đã có tool phù hợp: tin tức theo thời gian (hôm nay/tuần này) → lookup;
+      tweet → timeline/social_search; URL đã cho → fetch; bài báo arXiv → papers; quy định nội bộ → policy.
+      KHÔNG dùng cho câu ngoài phạm vi (giải toán, viết code, dịch, sáng tác) và câu hỏi về bản thân agent:
+      khi đó trả lời thẳng bằng text, không gọi tool. Thiếu thông tin bắt buộc → clarify, không đoán.
+    parameters:
+      type: object
+      properties:
+        question: {type: string, default: "", description: "Câu hỏi đầy đủ, rõ nghĩa của người dùng (giữ nguyên ngôn ngữ người dùng). Có thể ghép ngữ cảnh từ lượt trước để câu hỏi tự đứng được."}
+        max_results: {type: integer, default: 5, description: "Số nguồn web dùng để tổng hợp (1–10)."}
+      required: [question]

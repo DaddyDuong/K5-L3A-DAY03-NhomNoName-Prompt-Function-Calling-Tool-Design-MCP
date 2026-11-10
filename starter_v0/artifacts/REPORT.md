@@ -52,23 +52,24 @@ Ví dụ: "Research agent: tìm tin theo từ khóa / theo tài khoản, đọc 
 
 Fill from `artifacts/version_log.csv` and `runs/*.json`.
 
-> Metric = `case_accuracy` trên suite `base` (20 case), model gemini-3.5-flash. v0, v1, v2 lấy từ run thật. `artifacts/version_log.csv` hiện vẫn chưa có dòng nào (chỉ có header), nên số liệu dưới đây lấy trực tiếp từ `summary` trong `runs/*.json`. Dòng v3–v4 là kế hoạch sửa rút ra từ B2 (phần v2); cột Metric After và Run File điền sau khi chạy `run_eval.py`.
+> Metric = `case_accuracy` trên suite `base` (20 case), model gemini-3.5-flash. v0–v3 đều lấy từ run thật. `artifacts/version_log.csv` hiện vẫn chưa có dòng nào (chỉ có header), nên số liệu dưới đây lấy trực tiếp từ `summary` trong `runs/*.json`. Nội dung cột Changed Artifact/Hypothesis đối chiếu với diff `system_prompt.md`/`tools.yaml` của các commit `run v1`, `run v2`, `run v3`. Dòng v4 là kế hoạch, chưa chạy.
 
 | Version | Changed Artifact | Hypothesis | Metric Before | Metric After | Run File |
 |---|---|---|---:|---:|---|
 | v0 | baseline (`system_prompt.md` + `tools.yaml` starter, hash `v0+peb1c8179815b+t5b22a2476d41`) | Đo mốc ban đầu với gemini-3.5-flash. Prompt v0 cố tình xấu (đoán thay vì hỏi, tự gửi, chỉ chọn 1 tool), mô tả tool mơ hồ | — | 0.55 (11/20; routing 0.65, argument 0.55, multiturn 0.83) | `runs/v0_B_base_gemini_20261110T111122645086.json` |
 | v1 | `system_prompt.md` + `tools.yaml` (hash `v1+pbbc09845307f+td67078e54c86`) | **Prompt:** thêm mục "Scope (highest priority)" ở đầu: câu ngoài phạm vi (toán, code, dịch, sáng tác) → từ chối bằng text, không gọi tool; câu hỏi về bản thân agent → trả lời thẳng; `send` không phải cách trả lời người dùng. **Tools:** mô tả `lookup.query` = chỉ từ khóa cốt lõi, không thêm từ chỉ thời gian; `send` = chỉ đăng bản tin lên Telegram; `policy` = chỉ cho câu hỏi về quy định nội bộ; thêm tool mới `scope_check` (chỉ gọi khi không chắc phạm vi). Kỳ vọng sửa R03, R08, R09, R14, M02 | 0.55 | **0.75** (15/20; routing 0.80, argument 0.75, multiturn 1.00) | `runs/v1_B_base_gemini_20261110T113910565355.json` |
 | v2 | `system_prompt.md` + `tools.yaml` (hash `v2+pd55d5ef3b68b+t5e8885abcd6c`) | **Prompt:** xóa câu v0 "make a sensible guess… pick a well-known account like Sam Altman… assume a likely URL". Thêm mục "Missing information → ask, never guess": không có người/handle → `clarify(response_type="text")`, không gọi `timeline`; nói "bài này" mà không có URL → `clarify(response_type="text")`, không gọi `fetch`/`lookup`; đã có tên/URL (lượt này hoặc lượt trước) → gọi tool luôn, không hỏi lại. **Tools:** `clarify` = dùng khi thiếu thông tin bắt buộc, thay cho đoán; `timeline` = chỉ gọi khi đã biết tài khoản, `screenname` lấy từ lời người dùng (Sam Altman → sama); `fetch` = chỉ đọc URL người dùng đã đưa. Kỳ vọng sửa R10, R11, không làm hỏng R01, R04, M01, M04 | 0.75 | **0.85** (17/20; routing 1.00, argument 0.85, multiturn 1.00) | `runs/v2_B_base_gemini_20261110T120241831341.json` |
-| v3 | `system_prompt.md` + `tools.yaml` | **Prompt:** xóa 2 câu v0 còn lại "just go ahead and do it" và "Pick one tool". Thêm luật: mọi yêu cầu đăng/gửi (send, Telegram) → trước tiên `clarify(response_type="yes_no")` xin xác nhận, kể cả khi chưa rõ nội dung; chỉ gọi `send(confirmed=true)` sau khi người dùng trả lời "có"; yêu cầu nhiều nguồn → gọi nhiều tool. **Tools:** `lookup.query` thêm "KHÔNG thêm chữ 'news'/'tin tức' vì đã có `topic=news`; giữ nguyên từ khóa người dùng viết, không mở rộng viết tắt", kèm ví dụ "Tin tức AI hôm nay" → `query="AI", topic="news", timeframe="day"`; `send.confirmed` = chỉ true khi người dùng đã xác nhận. Kỳ vọng sửa R03, R12, R13 | 0.85 | _(chưa chạy)_ | _(chưa chạy)_ |
-| v4 | `data/eval_group.json` (+ prompt multi-turn nếu cần) | Chạy thêm 10 case group (B3) để kiểm tra fix có tổng quát hay chỉ khớp eval base; củng cố luật multi-turn "lượt mới nhất ghi đè chủ đề, giữ các tham số không bị sửa" nếu case group lộ lỗi | _(metric v3)_ | _(chưa chạy)_ | _(chưa chạy)_ |
+| v3 | `system_prompt.md` + `tools.yaml` (hash `v3+pd86ea544c2fa+tf6bf4d7efa63`) | **Prompt:** xóa 2 câu v0 còn lại "just go ahead and do it" và "Pick one tool". Thêm luật: mọi yêu cầu đăng/gửi (send, Telegram) → trước tiên `clarify(response_type="yes_no")` xin xác nhận, kể cả khi chưa rõ nội dung; chỉ gọi `send(confirmed=true)` sau khi người dùng trả lời "có"; yêu cầu nhiều nguồn → gọi nhiều tool, một nguồn → đúng một tool; thêm mục "Writing the `query` argument" (chỉ chủ đề cốt lõi, không thêm news/hôm nay/mới nhất, kèm ví dụ). **Tools:** `lookup.query` thêm "KHÔNG thêm chữ 'news'/'tin tức' vì đã có `topic=news`; giữ nguyên từ khóa người dùng viết, không mở rộng viết tắt", kèm ví dụ "Tin tức AI hôm nay" → `query="AI", topic="news", timeframe="day"`; `send.confirmed` = chỉ true khi người dùng đã xác nhận. Kỳ vọng sửa R03, R12, R13 | 0.85 | **1.00** (20/20; routing 1.00, argument 1.00, multiturn 1.00) | `runs/v3_B_base_gemini_20261110T121719724943.json` |
 
 **So sánh theo từng case** (từ `results[*].result.passed`):
 
-| Thay đổi | v0 → v1 | v1 → v2 |
-|---|---|---|
-| Fail → Pass | R08_out_of_scope, R09_no_tool_capability, R14_out_of_scope_coding, M02_carryover_timeframe (4) | R10_missing_handle, R11_missing_url (2) |
-| Vẫn fail | R03, R10, R11, R12, R13 (5) | R03, R12, R13 (3) — cả 3 đều đã đúng tool, chỉ còn sai 1 tham số |
-| Pass → Fail (regression) | không có | không có |
+| Thay đổi | v0 → v1 | v1 → v2 | v2 → v3 |
+|---|---|---|---|
+| Fail → Pass | R08_out_of_scope, R09_no_tool_capability, R14_out_of_scope_coding, M02_carryover_timeframe (4) | R10_missing_handle, R11_missing_url (2) | R03_web_news_routing, R12_confirm_before_send, R13_parallel_web_and_tweets (3) |
+| Vẫn fail | R03, R10, R11, R12, R13 (5) | R03, R12, R13 (3) — cả 3 đều đã đúng tool, chỉ còn sai 1 tham số | không còn (0) |
+| Pass → Fail (regression) | không có | không có | không có |
+
+Tổng: case_accuracy 0.55 → 0.75 → 0.85 → **1.00**; tool_routing 0.65 → 0.80 → 1.00 → 1.00; argument 0.55 → 0.75 → 0.85 → 1.00; multiturn 0.83 → 1.00 → 1.00 → 1.00.
 
 ## B2. Failure Analysis
 
@@ -131,6 +132,10 @@ Nhận xét v2:
 - **Mô tả `clarify` mới có tác dụng lan sang R12:** model đã hỏi lại thay vì tự gửi, chỉ sai kiểu câu hỏi (`text` thay vì `yes_no`). Ranh giới "hành động ghi" đã được tôn trọng, còn thiếu quy ước "xin xác nhận" là `yes_no`.
 - **Cả 3 lỗi còn lại đều là sai 1 tham số, không còn sai tool.** R03 và R13 cùng gốc ở `lookup.query`; R12 cần luật `yes_no` rõ ràng. Hai câu v0 còn sót ("just go ahead", "Pick one tool") nên xóa ở v3 để kết quả không phụ thuộc vào may rủi giữa các lần chạy.
 - **Cần lưu ý độ dao động:** `query` của R03 đổi giá trị ở cả 3 lần chạy dù mô tả `query` không đổi giữa v1 và v2. Một lần chạy chưa đủ để kết luận một fix ổn định; nên chạy lại v3 ít nhất 2 lần.
+
+### B2.4. v3
+
+Nguồn: `runs/v3_B_base_gemini_20261110T121719724943.json` (v3, suite `base`, gemini-3.5-flash, hash `v3+pd86ea544c2fa+tf6bf4d7efa63`). Kết quả: **20/20 pass** — case_accuracy 1.00, tool_routing 1.00, argument 1.00, multiturn 1.00. `failure_counts` và `observed_mismatch_counts` đều rỗng: v3 không còn case fail nào trong suite `base`.
 
 ## B3. Team Eval Cases
 
