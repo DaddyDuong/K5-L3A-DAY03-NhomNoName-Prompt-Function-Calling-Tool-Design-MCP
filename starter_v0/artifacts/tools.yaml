@@ -16,7 +16,10 @@
 tools:
   # ---------------- Core tools ----------------
   - name: clarify
-    description: "Gửi một câu hỏi cho người dùng."
+    description: >-
+      Hỏi lại người dùng khi THIẾU thông tin bắt buộc (tài khoản cần xem tweet, URL cần đọc...) hoặc
+      cần xác nhận trước hành động ghi. Dùng thay vì đoán. response_type="text" khi cần người dùng
+      gõ thông tin (tên/handle, link); "yes_no" khi xin xác nhận.
     parameters:
       type: object
       properties:
@@ -26,11 +29,13 @@ tools:
       required: [question]
 
   - name: timeline
-    description: "Lấy các bài đăng gần đây."
+    description: >-
+      Lấy tweet gần đây CỦA MỘT tài khoản X/Twitter cụ thể. Chỉ gọi khi người dùng đã nêu tên người
+      hoặc handle (ở lượt này hoặc lượt trước). Chưa biết của ai → gọi clarify, KHÔNG tự chọn tài khoản.
     parameters:
       type: object
       properties:
-        screenname: {type: string, default: "", description: "Tên tài khoản"}
+        screenname: {type: string, default: "", description: "Handle X/Twitter không có @ (Sam Altman → sama, Elon Musk → elonmusk). Phải lấy từ lời người dùng, không được tự đoán."}
         limit: {type: integer, default: 5, description: "Số lượng"}
       required: [screenname]
 
@@ -57,11 +62,13 @@ tools:
       required: [query]
 
   - name: fetch
-    description: "Lấy nội dung từ một địa chỉ."
+    description: >-
+      Đọc nội dung một URL người dùng ĐÃ ĐƯA trong hội thoại. Không có URL → gọi clarify xin link,
+      KHÔNG tự tạo URL, KHÔNG dùng lookup để đoán bài.
     parameters:
       type: object
       properties:
-        url: {type: string, default: "", description: "Địa chỉ"}
+        url: {type: string, default: "", description: "URL đầy đủ (http/https) chép nguyên từ tin nhắn người dùng."}
       required: [url]
 
   - name: format
