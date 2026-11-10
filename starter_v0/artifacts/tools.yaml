@@ -1,77 +1,69 @@
-# starter_v0 — tool declarations (intentionally vague).
-# Names and descriptions here are a rough first draft. Routing rules, name->handle
-# mapping, arg conventions (news/timeframe/Top), and the send-confirmation boundary
-# are NOT spelled out anywhere yet. Your job is to make these declarations + the
-# system prompt good enough that the agent routes correctly on the eval.
+# Tool declarations: routing guidance, argument conventions, and confirmation rules.
 #
 # If you rename a tool, keep the name in sync across:
 #   this file  ->  tools/__init__.py (TOOL_FUNCTIONS)  ->  data/eval_base.json + data/eval_research_extension.json
 # `pytest tests/test_tool_contract.py` checks this sync for you.
 #
-# TODO(student):
-#   - Rewrite every description: what it does, WHEN to use it, WHEN NOT to use it.
-#   - Spell out arg conventions in parameter descriptions (handle format, topic/timeframe, search_type).
-#   - Make the `send` confirmation boundary explicit.
-#   - Declare your new tool(s) at the end of this file.
+# Declare new tools at the end of this file.
 tools:
   # ---------------- Core tools ----------------
   - name: clarify
-    description: "Gửi một câu hỏi cho người dùng."
+    description: "Hỏi người dùng khi thiếu thông tin bắt buộc hoặc cần xác nhận trước khi gửi. Không hỏi lại thông tin đã có trong hội thoại. Luôn truyền response_type rõ ràng: text khi cần thông tin tự do, yes_no khi cần xác nhận gửi nội dung, choice khi đưa ra lựa chọn."
     parameters:
       type: object
       properties:
         question: {type: string, default: "", description: "Câu hỏi"}
-        response_type: {type: string, enum: [text, yes_no, choice], default: "text", description: "Kiểu trả lời"}
-        options: {type: array, default: [], items: {type: string}, description: "Các lựa chọn"}
+        response_type: {type: string, enum: [text, yes_no, choice], default: "text", description: "Luôn truyền rõ: text cho câu hỏi mở như tài khoản hoặc URL; yes_no cho xác nhận gửi; choice cho danh sách lựa chọn."}
+        options: {type: array, default: [], items: {type: string}, description: "Danh sách lựa chọn khi response_type=choice; để trống với text hoặc yes_no."}
       required: [question]
 
   - name: timeline
-    description: "Lấy các bài đăng gần đây."
+    description: "Lấy bài đăng gần đây của một tài khoản cụ thể. Không dùng để tìm bài theo chủ đề; dùng social_search cho mục đích đó. Nếu thiếu danh tính tài khoản, gọi clarify thay vì đoán."
     parameters:
       type: object
       properties:
-        screenname: {type: string, default: "", description: "Tên tài khoản"}
-        limit: {type: integer, default: 5, description: "Số lượng"}
+        screenname: {type: string, default: "", description: "Handle tài khoản không có @, không phải URL hồ sơ. Chỉ chuyển tên người thành handle khi biết chắc; nếu mơ hồ thì hỏi lại."}
+        limit: {type: integer, default: 5, description: "Số bài theo yêu cầu người dùng; dùng mặc định 5 khi không chỉ định."}
       required: [screenname]
 
   - name: social_search
-    description: "Tìm trên mạng xã hội."
+    description: "Tìm bài đăng mạng xã hội theo từ khóa hoặc chủ đề. Không dùng thay tìm kiếm web bằng lookup hoặc lấy bài của một tài khoản bằng timeline."
     parameters:
       type: object
       properties:
         query: {type: string, default: "", description: "Từ khóa"}
-        search_type: {type: string, enum: [Latest, Top], default: "Latest", description: "Cách sắp xếp"}
-        limit: {type: integer, default: 5, description: "Số lượng"}
+        search_type: {type: string, enum: [Latest, Top], default: "Latest", description: "Top cho bài nổi bật hoặc phổ biến; Latest cho bài mới nhất. Giữ đúng chữ hoa và dùng Latest khi không chỉ định."}
+        limit: {type: integer, default: 5, description: "Số bài theo yêu cầu người dùng; dùng mặc định 5 khi không chỉ định."}
       required: [query]
 
   - name: lookup
-    description: "Tra cứu thông tin trên internet."
+    description: "Tìm thông tin hoặc tin tức trên web. Với tin tức, truyền topic=news và timeframe phù hợp. Không dùng để tìm bài mạng xã hội hoặc đọc nội dung một URL đã biết; dùng social_search hoặc fetch tương ứng."
     parameters:
       type: object
       properties:
-        query: {type: string, default: "", description: "Truy vấn"}
-        topic: {type: string, enum: [general, news], default: "general", description: "Phân loại"}
-        timeframe: {type: string, enum: [day, week, month, year], default: "week", description: "Khoảng thời gian"}
-        max_results: {type: integer, default: 5, description: "Số kết quả"}
+        query: {type: string, default: "", description: "Chủ đề hoặc thực thể cần tìm. Thể hiện loại tin và thời gian bằng topic và timeframe thay vì thêm từ news hoặc mốc thời gian không cần thiết vào query; giữ các từ khóa phân biệt nội dung."}
+        topic: {type: string, enum: [general, news], default: "general", description: "Truyền news khi hỏi tin tức, cập nhật hoặc diễn biến mới; general cho thông tin chung."}
+        timeframe: {type: string, enum: [day, week, month, year], default: "week", description: "day cho hôm nay hoặc 24 giờ; week cho tuần; month cho tháng; year cho năm. Dùng yêu cầu mới nhất trong hội thoại; mặc định week khi không chỉ định."}
+        max_results: {type: integer, default: 5, description: "Số kết quả theo yêu cầu người dùng; dùng mặc định 5 khi không chỉ định."}
       required: [query]
 
   - name: fetch
-    description: "Lấy nội dung từ một địa chỉ."
+    description: "Đọc nội dung một URL cụ thể đã có trong hội thoại hoặc kết quả tool. Không dùng để tìm nguồn theo chủ đề và không tự bịa URL; nếu người dùng nói bài này mà chưa cung cấp URL thì gọi clarify."
     parameters:
       type: object
       properties:
-        url: {type: string, default: "", description: "Địa chỉ"}
+        url: {type: string, default: "", description: "URL đầy đủ từ người dùng hoặc kết quả tool; không đoán địa chỉ."}
       required: [url]
 
   - name: format
-    description: "Trình bày dữ liệu đã có thành văn bản."
+    description: "Trình bày dữ liệu đã có thành bản tin hoặc văn bản theo mẫu. Không tìm thông tin mới, bịa nguồn hoặc gửi nội dung; thu thập dữ liệu trước nếu chưa có."
     parameters:
       type: object
       properties:
         items:
           type: array
           default: []
-          description: "Danh sách item"
+          description: "Các mục có thật từ hội thoại hoặc kết quả tool trước đó; không bịa tiêu đề, nguồn hoặc URL."
           items:
             type: object
             properties:
@@ -86,40 +78,40 @@ tools:
 
   # ---------------- Bonus tools ----------------
   - name: send
-    description: "Gửi một đoạn văn bản đi."
+    description: "Gửi nội dung ra bên ngoài chỉ sau khi người dùng đã xác nhận rõ nội dung cụ thể và hành động gửi. Chỉ gọi với confirmed=true sau xác nhận; nếu chưa có, dùng clarify với response_type=yes_no. Không dùng để trả lời chat thông thường, soạn nháp hoặc định dạng văn bản."
     parameters:
       type: object
       properties:
-        text: {type: string, default: "", description: "Nội dung"}
-        confirmed: {type: boolean, default: false, description: "Cờ xác nhận"}
+        text: {type: string, default: "", description: "Nội dung cụ thể đã được người dùng duyệt để gửi; không thay đổi nội dung sau xác nhận."}
+        confirmed: {type: boolean, default: false, description: "Phải truyền true khi gọi send, chỉ sau xác nhận rõ ràng từ người dùng về nội dung và hành động; không tự suy diễn xác nhận."}
       required: [text]
 
   - name: policy
-    description: "Tìm trong tài liệu nội bộ."
+    description: "Tìm quy định và chính sách trong tài liệu nội bộ. Dùng cho câu hỏi về quy định của tổ chức; không thay tìm kiếm web hoặc tin tức bằng lookup."
     parameters:
       type: object
       properties:
         query: {type: string, default: "", description: "Truy vấn"}
         policy_area: {type: string, enum: [all, ai_research, source_citation, data_privacy, external_publishing, tool_usage], default: "all", description: "Nhóm"}
-        top_k: {type: integer, default: 3, description: "Số mục"}
+        top_k: {type: integer, default: 3, description: "Số mục theo yêu cầu người dùng; dùng mặc định 3 khi không chỉ định."}
       required: [query]
 
   - name: papers
-    description: "Tìm bài báo khoa học."
+    description: "Tìm bài báo khoa học trên arXiv theo chủ đề hoặc từ khóa. Không dùng cho tin tức thông thường; dùng paper_text để đọc nội dung bài đã xác định."
     parameters:
       type: object
       properties:
         query: {type: string, default: "", description: "Từ khóa"}
-        max_results: {type: integer, default: 5, description: "Số lượng"}
-        sort_by: {type: string, enum: [relevance, lastUpdatedDate, submittedDate], default: "relevance", description: "Sắp xếp"}
+        max_results: {type: integer, default: 5, description: "Số bài theo yêu cầu người dùng; dùng mặc định 5 khi không chỉ định."}
+        sort_by: {type: string, enum: [relevance, lastUpdatedDate, submittedDate], default: "relevance", description: "relevance cho độ liên quan; submittedDate cho bài mới đăng; lastUpdatedDate cho bài mới cập nhật."}
       required: [query]
 
   - name: paper_text
-    description: "Lấy nội dung text của một bài báo."
+    description: "Trích xuất văn bản bài báo đã có ID hoặc URL arXiv. Không tìm bài theo chủ đề; dùng papers trước nếu chưa xác định bài, hoặc clarify khi cần biết chính xác bài nào."
     parameters:
       type: object
       properties:
-        arxiv_url: {type: string, default: "", description: "ID hoặc địa chỉ"}
-        max_pages: {type: integer, default: 5, description: "Số trang"}
-        max_chars: {type: integer, default: 8000, description: "Số ký tự"}
+        arxiv_url: {type: string, default: "", description: "ID hoặc URL arXiv đã được cung cấp hoặc tìm thấy; không tự bịa ID."}
+        max_pages: {type: integer, default: 5, description: "Giới hạn trang theo yêu cầu người dùng; dùng mặc định 5 khi không chỉ định."}
+        max_chars: {type: integer, default: 8000, description: "Giới hạn ký tự theo yêu cầu người dùng; dùng mặc định 8000 khi không chỉ định."}
       required: [arxiv_url]
